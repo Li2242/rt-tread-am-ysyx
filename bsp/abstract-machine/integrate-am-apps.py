@@ -4,8 +4,11 @@ import sys, os, shutil, subprocess
 from pathlib import Path
 
 # global settings
+
+# 设置AM和am-kernels的路径
 AM_HOME = Path(os.environ["AM_HOME"])
 AM_KERNELS_HOME = (AM_HOME / ".." / "am-kernels").resolve()
+#要集成的应用程序列表
 app_dir_list = [
   AM_KERNELS_HOME / "kernels" / "hello",
   AM_KERNELS_HOME / "benchmarks" / "microbench",
