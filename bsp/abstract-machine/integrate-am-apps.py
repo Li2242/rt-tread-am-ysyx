@@ -14,7 +14,7 @@ app_dir_list = [
   AM_KERNELS_HOME / "benchmarks" / "microbench",
   AM_KERNELS_HOME / "kernels" / "typing-game",
   AM_KERNELS_HOME / "kernels" / "snake",
-  AM_KERNELS_HOME / "fceux-am",
+  AM_KERNELS_HOME / "fceux-am",     
 ]
 
 if len(sys.argv) != 3:
@@ -29,6 +29,7 @@ if not sys.argv[2].startswith("CROSS_COMPILE="):
     exit(-1)
 CROSS_COMPILE = sys.argv[2][14:]
 
+#创建build目录
 Path("build").mkdir(exist_ok=True)
 am_app_mk_fp = open(f"build/{ARCH}/am-apps.mk", "w")
 am_app_c_fp  = open("build/am-apps.c" , "w")
@@ -40,17 +41,20 @@ lib_sym = [
 ]
 am_init_sym = [ "trm_init", "ioe_init", "cte_init", "vme_init", "mpe_init" ]
 
+#构建库文件路径
 def read_lib_symbols(lib):
     libfile = AM_HOME / lib / "build" / f"{lib}-{ARCH}.a"
     if (not libfile.exists()):
         os.system("make -j ARCH=" + ARCH + " -C " + str(AM_HOME / lib))
+    #用nm提取符号表
     cmd = f"{CROSS_COMPILE}nm -g --defined-only --format=just-symbols {str(libfile)}"
     res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
     global lib_sym
     lib_sym = list(set(lib_sym + res.stdout.strip().split('\n')))
-
+#集成应用程序
 def integrate(app_dir):
     app_name = app_dir.name.replace("-", "_")
+    #编辑应用程序
     os.system(f"make -j ARCH={ARCH} -C {str(app_dir)}")
     dst = Path("build") / ARCH / "am-apps" / app_name
     dst.mkdir(parents=True, exist_ok=True)
@@ -58,6 +62,7 @@ def integrate(app_dir):
     objs = dst.rglob("*.o")
     redefine_sym_file = "redefine_sym.txt"
     redefine_sym_fp = open(redefine_sym_file, "w")
+    #指向重定规则
     for f in lib_sym:
         if f in am_init_sym:
             redefine_sym_fp.write(f"__am_{app_name}_{f} __dummy_{f}\n")
@@ -67,6 +72,7 @@ def integrate(app_dir):
             redefine_sym_fp.write(f"__am_{app_name}_{f} {f}\n")
     redefine_sym_fp.close()
     for obj in objs:
+        #给所有的符号加上前缀
         os.system(f"{CROSS_COMPILE}objcopy --prefix-symbols=__am_{app_name}_ --set-section-flags .text*=readonly,noload --set-section-flags .*rodata*=readonly,noload {str(obj)}")
         os.system(f"{CROSS_COMPILE}objcopy --redefine-syms=redefine_sym.txt --prefix-alloc-sections=__am_apps {str(obj)}")
         os.system(f"{CROSS_COMPILE}objcopy --set-section-flags .text*=readonly,code,alloc --set-section-flags .*rodata*=readonly,data,alloc {str(obj)}")

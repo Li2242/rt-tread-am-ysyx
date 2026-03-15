@@ -83,13 +83,13 @@ typedef struct {
 	void *parameter;
 	void (* texit)(void);
 } wrapped;
+
 //包裹函数
 void fun_wrapped(void* t){
 	wrapped *f = (wrapped*)t;
 	f->tentry(f->parameter);
 	f->texit();
 }
-
 //上下文的创建
 rt_uint8_t *rt_hw_stack_init(void *tentry, void *parameter, rt_uint8_t *stack_addr, void *texit) {
 	//对齐
